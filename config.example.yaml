@@ -1,0 +1,52 @@
+# ONVIF Gateway configuration.
+# Copy to gateway.yaml and fill in your values, then: onvif-gateway up -c gateway.yaml
+
+encoder:
+  host: 192.168.1.40            # IP of the Hanwha SPE-1630 on your LAN
+  username: admin
+  password: CHANGE_ME
+  # RTSP URL templates. Hanwha Wisenet pattern is rtsp://<ip>/profile<N>/media.smp.
+  # On a 16-ch encoder the channel<->profile mapping is NOT always 1:1 — run
+  #   onvif-gateway provision -c gateway.yaml
+  # to read the exact per-channel URLs from the encoder over ONVIF and print a
+  # ready-to-paste cameras: block (with main_url/sub_url filled in).
+  rtsp_main_template: "rtsp://{user}:{pass}@{host}/profile{ch}/media.smp"
+  rtsp_sub_template:  "rtsp://{user}:{pass}@{host}/profile{ch}sub/media.smp"
+
+network:
+  parent_interface: eth0        # physical NIC the virtual cameras ride on
+  netmask: 255.255.255.0
+  gateway: 192.168.1.1          # your UniFi gateway; used only for the ARP keepalive
+
+mediamtx:
+  binary: mediamtx              # path to the mediamtx binary
+  config_path: /etc/onvif-gateway/mediamtx.yml
+  rtsp_port: 8554
+  api_port: 9997
+
+defaults:
+  onvif_username: admin         # credentials UniFi will use to adopt the cameras
+  onvif_password: admin
+  onvif_port: 80                # per-IP, so 80 is fine (run as root or grant cap)
+  codec: H264                   # advertised codec; copy-through by default
+  main: { width: 1920, height: 1080, framerate: 30, bitrate: 4096 }
+  sub:  { width: 640,  height: 480,  framerate: 15, bitrate: 1024 }
+
+# 16 channels -> 16 static IPs. Give each a free address in your subnet.
+cameras:
+  - { id: 1,  name: "Front Door",   ip: 192.168.1.50 }
+  - { id: 2,  name: "Driveway",     ip: 192.168.1.51 }
+  - { id: 3,  name: "Backyard",     ip: 192.168.1.52 }
+  - { id: 4,  name: "Garage",       ip: 192.168.1.53 }
+  - { id: 5,  name: "Side Gate",    ip: 192.168.1.54 }
+  - { id: 6,  name: "Channel 6",    ip: 192.168.1.55 }
+  - { id: 7,  name: "Channel 7",    ip: 192.168.1.56 }
+  - { id: 8,  name: "Channel 8",    ip: 192.168.1.57 }
+  - { id: 9,  name: "Channel 9",    ip: 192.168.1.58 }
+  - { id: 10, name: "Channel 10",   ip: 192.168.1.59 }
+  - { id: 11, name: "Channel 11",   ip: 192.168.1.60 }
+  - { id: 12, name: "Channel 12",   ip: 192.168.1.61 }
+  - { id: 13, name: "Channel 13",   ip: 192.168.1.62 }
+  - { id: 14, name: "Channel 14",   ip: 192.168.1.63 }
+  - { id: 15, name: "Channel 15",   ip: 192.168.1.64 }
+  - { id: 16, name: "Channel 16",   ip: 192.168.1.65 }

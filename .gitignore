@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+# Holds the encoder password and your LAN layout — never commit.
+gateway.yaml
+# Local clone of the reference project, kept only for study.
+reference/

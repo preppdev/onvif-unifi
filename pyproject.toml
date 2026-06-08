@@ -1,0 +1,22 @@
+[project]
+name = "onvif-gateway"
+version = "0.1.0"
+description = "Re-advertise each channel of a Hanwha SPE-1630 encoder as a discrete virtual ONVIF camera (unique IP + MAC) for UniFi Protect"
+requires-python = ">=3.9"
+dependencies = [
+    "PyYAML>=6.0",
+    "Flask>=3.0",
+    "requests>=2.31",
+    # Used by the encoder auto-provisioner (Phase 4) to ONVIF-probe the SPE-1630.
+    "onvif-zeep>=0.2.12",
+]
+
+[project.scripts]
+onvif-gateway = "gateway.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["gateway*"]

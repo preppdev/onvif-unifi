@@ -1,0 +1,20 @@
+[Unit]
+Description=ONVIF Gateway (SPE-1630 channels -> virtual ONVIF cameras for UniFi)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Needs root (or CAP_NET_ADMIN + CAP_NET_RAW + CAP_NET_BIND_SERVICE) to create
+# macvlan VNICs and bind ONVIF on port 80.
+User=root
+WorkingDirectory=/opt/onvif-gateway
+ExecStart=/opt/onvif-gateway/.venv/bin/onvif-gateway -c /etc/onvif-gateway/gateway.yaml up
+# `up` traps SIGTERM and tears down all virtual NICs on the way out.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
