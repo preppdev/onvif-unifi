@@ -41,6 +41,9 @@ Then edit `/etc/onvif-gateway/gateway.yaml`, `provision` to pull the encoder's r
 RTSP URLs, and `sudo systemctl enable --now onvif-gateway`. Update later with
 `sudo /opt/onvif-gateway/scripts/update.sh`. (Manual setup is below.)
 
+Running on an **Intel Mac mini**? See [docs/mac-mini-linux.md](docs/mac-mini-linux.md)
+— bare-metal Ubuntu runs the gateway unchanged.
+
 ## Requirements (Linux target)
 
 - Python ≥ 3.9
