@@ -75,6 +75,11 @@ def init_db() -> None:
     conn.close()
 
 
+# Ensure the schema exists at import time too — under gunicorn the module is
+# imported and `app` used directly, so main() never runs.
+init_db()
+
+
 # --------------------------------------------------------------------------- #
 # auth
 # --------------------------------------------------------------------------- #
