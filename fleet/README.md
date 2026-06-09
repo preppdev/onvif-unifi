@@ -13,27 +13,36 @@ commands. Pairs with the `onvif-agent` service on each box.
   `start_gateway`. The box picks the command up on its next heartbeat and runs it.
   Commands are a fixed allowlist — never arbitrary shell.
 
-## Run
+## Run on-prem over Tailscale (recommended)
 
-Needs Python 3.9+ and Flask (`pip install flask`). Set env and start:
-
-```bash
-export FLEET_ADMIN_PASSWORD='choose-a-strong-one'   # dashboard login (user: admin)
-export FLEET_ENROLL_KEY='shared-secret-for-new-boxes'
-export FLEET_DB=/var/lib/fleet/fleet.db
-python -m fleet                                     # listens on :8080
-```
-
-For production, run behind TLS (the agent talks HTTPS) and a real WSGI server:
+Put this server on any always-on machine at your office and join it to your
+tailnet. Appliances reach it over the WireGuard tunnel, so **no public host, no
+domain, and no TLS certs are needed** — Tailscale already encrypts everything.
 
 ```bash
-pip install gunicorn
-gunicorn -w 2 -b 127.0.0.1:8080 fleet.server:app
-# then put Caddy/nginx in front for HTTPS on your domain
+cd fleet
+cp .env.example .env          # set FLEET_ADMIN_PASSWORD + FLEET_ENROLL_KEY
+docker compose up -d
+sudo tailscale up             # if this host isn't on the tailnet yet
 ```
 
-A $5 VPS with a domain + Caddy (automatic TLS) is plenty. **Always serve over
-HTTPS** — heartbeats carry box API keys.
+Name the host `fleet` (or use its `100.x` address) and point each box's config at
+it: `fleet.server_url: http://fleet:8080`. Dashboard: `http://fleet:8080` from any
+device on your tailnet (user `admin`).
+
+> Because the link is tailnet-only, plain HTTP is fine. If you *do* expose it to
+> the public internet instead, put it behind Caddy/nginx for HTTPS — heartbeats
+> carry box API keys.
+
+### Without Docker
+
+```bash
+pip install flask gunicorn
+FLEET_ADMIN_PASSWORD=… FLEET_ENROLL_KEY=… FLEET_DB=/var/lib/fleet/fleet.db \
+  gunicorn -w 2 -b 0.0.0.0:8080 fleet.server:app
+```
+
+A tiny VM (1 vCPU / 1 GB) is more than enough — it's just Flask + SQLite.
 
 ## Enrolling a box
 

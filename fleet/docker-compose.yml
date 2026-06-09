@@ -1,0 +1,28 @@
+# Run the fleet server on-prem. Reach it from appliances over Tailscale.
+#
+#   cd fleet
+#   cp .env.example .env        # set FLEET_ADMIN_PASSWORD + FLEET_ENROLL_KEY
+#   docker compose up -d
+#
+# Then the box's gateway.yaml fleet.server_url points at this host's Tailscale
+# name, e.g.  http://fleet:8080  (MagicDNS) or  http://100.x.y.z:8080.
+# No TLS needed over the tailnet — WireGuard encrypts it.
+
+services:
+  fleet:
+    build: .
+    container_name: onvif-fleet
+    restart: unless-stopped
+    # Publishes on all host interfaces. To restrict to the tailnet only, replace
+    # with "<tailscale-ip>:8080:8080", or front it with `tailscale serve`.
+    ports:
+      - "8080:8080"
+    environment:
+      FLEET_ADMIN_PASSWORD: ${FLEET_ADMIN_PASSWORD:?set FLEET_ADMIN_PASSWORD in .env}
+      FLEET_ENROLL_KEY: ${FLEET_ENROLL_KEY:?set FLEET_ENROLL_KEY in .env}
+      FLEET_OFFLINE_AFTER: ${FLEET_OFFLINE_AFTER:-180}
+    volumes:
+      - fleet-data:/data
+
+volumes:
+  fleet-data:

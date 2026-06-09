@@ -5,5 +5,6 @@ __pycache__/
 gateway.yaml
 # Local clone of the reference project, kept only for study.
 reference/
-# Fleet server database.
+# Fleet server database + secrets.
 *.db
+fleet/.env
