@@ -1,0 +1,13 @@
+[Unit]
+Description=ONVIF Gateway first-boot Tailscale enrollment
+After=network-online.target tailscaled.service
+Wants=network-online.target
+# Runs every boot but is a no-op once the box is on the tailnet.
+
+[Service]
+Type=oneshot
+ExecStart=/opt/onvif-gateway/scripts/firstboot.sh
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

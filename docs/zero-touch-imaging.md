@@ -21,38 +21,29 @@ clone image → ship → plug in → DHCP + Tailscale auto-join → self-registe
 
 On a reference Mac mini with Ubuntu installed:
 
-1. **Install the gateway** (this also installs the agent + Tailscale):
+1. **Install** (gateway + agent + firstboot + Tailscale, joined with a REUSABLE key):
    ```bash
    curl -fsSL https://raw.githubusercontent.com/preppdev/onvif-unifi/main/install.sh \
      | sudo TAILSCALE_AUTHKEY='tskey-auth-REUSABLE-...' bash
    ```
-   Use a **reusable** Tailscale auth key (Tailscale admin → Settings → Keys →
-   Generate → enable *Reusable*; *Ephemeral* optional; tag e.g. `tag:onvif`) so
-   every clone can join with the same key.
+   Use a **reusable** key (Tailscale admin → Settings → Keys → Generate →
+   *Reusable*; tag e.g. `tag:onvif`). The installer saves it to
+   `/etc/onvif-gateway/tailscale.authkey` so each clone auto-joins on first boot.
 
 2. **Write the agent bootstrap** at `/etc/onvif-gateway/fleet.yaml`
-   (from `fleet.yaml.example`): set `server_url` to the fleet server's Tailscale
-   name and `enroll_key` to your server's `FLEET_ENROLL_KEY`. Leave `box_id`
-   and `api_key` blank (auto-derived/auto-generated).
+   (from `fleet.yaml.example`): `server_url: http://fleet:8080` (the fleet
+   server's Tailscale name) and `enroll_key` = your server's `FLEET_ENROLL_KEY`.
+   Leave `box_id`/`api_key` out — they're auto-derived per box.
 
-3. **Enable the agent, leave the gateway disabled** (no cameras until provisioned):
+3. **Prepare the master** (one script — disables the gateway, strips identity,
+   logs out Tailscale, resets machine-id, clears logs):
    ```bash
-   sudo systemctl enable onvif-agent
-   sudo systemctl disable onvif-gateway
-   sudo rm -f /etc/onvif-gateway/gateway.yaml          # no leftover site config
+   sudo /opt/onvif-gateway/scripts/prepare-image.sh
    ```
 
-4. **Strip per-machine identity** so clones regenerate cleanly:
-   ```bash
-   sudo rm -f /var/lib/onvif-gateway/api_key /var/lib/onvif-gateway/applied_version
-   sudo truncate -s 0 /etc/machine-id
-   sudo tailscale logout                                # each clone re-auths via the reusable key
-   sudo cloud-init clean 2>/dev/null || true
-   ```
-
-5. **Image the disk** (clone the SSD, or `dd`/Clonezilla to an image file).
-   `box_id` comes from the NIC MAC, so each physical box is unique regardless of
-   the cloned contents.
+4. **Power off and image the disk** (clone the SSD, or `dd`/Clonezilla to a file).
+   Each clone gets a unique `box_id` and Tailscale hostname from its NIC MAC, so
+   the identical disk contents don't collide.
 
 ## Per box (no technical skill needed on site)
 
