@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="15">
+  <title>ONVIF Gateway Fleet</title>
+  <style>
+    body { font: 14px/1.5 -apple-system, system-ui, sans-serif; margin: 2rem; color: #1a1a1a; }
+    h1 { font-size: 1.3rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid #e3e3e3; }
+    th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: #666; }
+    .dot { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; margin-right: .4rem; }
+    .on  { background: #1ca64c; } .off { background: #c62828; }
+    .pill { font-size: .72rem; padding: .1rem .45rem; border-radius: 1rem; background: #eee; }
+    .pill.bad { background: #fde7e7; color: #c62828; } .pill.good { background: #e6f6ec; color: #1ca64c; }
+    .actions form { display: inline; }
+    button { font-size: .72rem; padding: .2rem .5rem; margin: 0 .1rem; cursor: pointer;
+             border: 1px solid #ccc; border-radius: .3rem; background: #fafafa; }
+    button.danger { color: #c62828; border-color: #f0bcbc; }
+    a { color: #1a56db; text-decoration: none; }
+    .muted { color: #888; }
+  </style>
+</head>
+<body>
+  <h1>ONVIF Gateway Fleet <span class="muted">· {{ boxes|length }} box(es)</span></h1>
+  <table>
+    <thead>
+      <tr><th>Status</th><th>Box</th><th>Cameras</th><th>Gateway</th><th>Version</th>
+          <th>Tailscale</th><th>Last seen</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for b in boxes %}
+      <tr>
+        <td><span class="dot {{ 'on' if b.online else 'off' }}"></span>{{ 'online' if b.online else 'offline' }}</td>
+        <td><a href="{{ url_for('box_detail', box_id=b.box_id) }}">{{ b.name }}</a><br>
+            <span class="muted">{{ b.box_id }}</span></td>
+        <td>
+          {% if b.cameras_total is not none %}
+            <span class="pill {{ 'good' if b.cameras_up == b.cameras_total else 'bad' }}">
+              {{ b.cameras_up }}/{{ b.cameras_total }} up</span>
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td>{% if b.gateway_active %}<span class="pill good">active</span>
+            {% else %}<span class="pill bad">down</span>{% endif %}</td>
+        <td><code>{{ b.version }}</code></td>
+        <td class="muted">{{ b.tailscale_ip or '—' }}</td>
+        <td class="muted">{{ '%ds ago'|format(b.last_seen_ago) if b.last_seen_ago is not none else 'never' }}</td>
+        <td class="actions">
+          {% for c in ['restart_gateway', 'update', 'reboot'] %}
+          <form method="post" action="{{ url_for('queue_command', box_id=b.box_id) }}"
+                onsubmit="return confirm('Queue {{ c }} for {{ b.name }}?')">
+            <input type="hidden" name="type" value="{{ c }}">
+            <button class="{{ 'danger' if c == 'reboot' else '' }}">{{ c.replace('_',' ') }}</button>
+          </form>
+          {% endfor %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="muted">No boxes have checked in yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">Auto-refreshes every 15s · offline after {{ offline_after }}s without a heartbeat</p>
+</body>
+</html>

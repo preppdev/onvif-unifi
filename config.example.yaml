@@ -24,6 +24,16 @@ mediamtx:
   rtsp_port: 8554
   api_port: 9997
 
+# Optional: phone-home heartbeat + remote command queue (the onvif-agent service).
+# Leave out or set enabled:false to disable. See fleet/README.md to run the server.
+fleet:
+  enabled: false
+  server_url: https://fleet.example.com   # your central fleet server
+  box_id: client-acme-01                   # unique per appliance
+  api_key: CHANGE_ME_PER_BOX               # this box's bearer token
+  enroll_key: CHANGE_ME_SHARED             # only needed to first-register this box
+  interval: 60
+
 defaults:
   onvif_username: admin         # credentials UniFi will use to adopt the cameras
   onvif_password: admin

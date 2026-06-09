@@ -15,13 +15,18 @@ git -C "$INSTALL_DIR" reset --hard --quiet "origin/$BRANCH"
 echo "[update] syncing python deps"
 "$INSTALL_DIR/.venv/bin/pip" install --quiet -e "$INSTALL_DIR"
 
-# Refresh the unit in case it changed.
-sed "s#/opt/onvif-gateway#${INSTALL_DIR}#g" \
-    "$INSTALL_DIR/systemd/onvif-gateway.service" > /etc/systemd/system/onvif-gateway.service
+# Refresh the units in case they changed.
+for unit in onvif-gateway onvif-agent; do
+    [ -f "$INSTALL_DIR/systemd/${unit}.service" ] || continue
+    sed "s#/opt/onvif-gateway#${INSTALL_DIR}#g" \
+        "$INSTALL_DIR/systemd/${unit}.service" > "/etc/systemd/system/${unit}.service"
+done
 systemctl daemon-reload
 
-if systemctl is-enabled --quiet onvif-gateway 2>/dev/null; then
-    echo "[update] restarting service"
-    systemctl restart onvif-gateway
-fi
+for unit in onvif-gateway onvif-agent; do
+    if systemctl is-enabled --quiet "$unit" 2>/dev/null; then
+        echo "[update] restarting $unit"
+        systemctl restart "$unit"
+    fi
+done
 echo "[update] done -> $(git -C "$INSTALL_DIR" rev-parse --short HEAD)"

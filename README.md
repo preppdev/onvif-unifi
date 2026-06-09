@@ -88,6 +88,18 @@ sudo systemctl enable --now onvif-gateway
 In UniFi Protect, the 16 cameras should appear under **third-party ONVIF**
 adoption; adopt each with the `onvif_username`/`onvif_password` from your config.
 
+## Remote fleet management
+
+For appliances deployed at client sites (behind NAT):
+
+- **Access** — install [Tailscale](https://tailscale.com) so you can SSH in / run
+  the updater from anywhere. The installer auto-joins if you pass an auth key:
+  `curl -fsSL …/install.sh | sudo TAILSCALE_AUTHKEY=tskey-… bash`.
+- **Heartbeat + control** — the optional `onvif-agent` service phones home to a
+  central [fleet server](fleet/README.md) with per-camera health, version, and
+  uptime, and executes queued commands (restart / update / reboot). Enable the
+  `fleet:` block in the config, then `sudo systemctl enable --now onvif-agent`.
+
 ## CLI
 
 | Command | Purpose |
@@ -97,6 +109,7 @@ adoption; adopt each with the `onvif_username`/`onvif_password` from your config
 | `up` | Bring up all virtual cameras (foreground; SIGTERM cleans up) |
 | `down` | Remove all virtual NICs |
 | `status` | Ping each camera's `/healthz` |
+| `agent` | Run the fleet heartbeat agent (foreground; via `onvif-agent` service) |
 
 ## Status
 

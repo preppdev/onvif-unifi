@@ -1,0 +1,16 @@
+[Unit]
+Description=ONVIF Gateway fleet heartbeat agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Root so it can run the updater / systemctl / reboot on command.
+User=root
+WorkingDirectory=/opt/onvif-gateway
+ExecStart=/opt/onvif-gateway/.venv/bin/onvif-gateway -c /etc/onvif-gateway/gateway.yaml agent
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

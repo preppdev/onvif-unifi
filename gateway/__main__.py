@@ -69,6 +69,17 @@ def _cmd_provision(args) -> int:
     return provision_encoder(args.config)
 
 
+def _cmd_agent(args) -> int:
+    from .agent import FleetAgent
+
+    cfg = load_config(args.config)
+    if not cfg.fleet or not cfg.fleet.enabled:
+        print("error: no enabled [fleet] section in config", file=sys.stderr)
+        return 1
+    FleetAgent(cfg).run_forever()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="onvif-gateway")
     parser.add_argument("-c", "--config", default="gateway.yaml", help="path to config YAML")
@@ -82,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
                           help="also TCP-probe each upstream encoder RTSP port")
     sub.add_parser("validate", help="load + check config, print resolved cameras")
     sub.add_parser("provision", help="ONVIF-probe the encoder and print a cameras: block")
+    sub.add_parser("agent", help="run the fleet heartbeat agent (foreground)")
 
     args = parser.parse_args(argv)
     setup_logging(args.log_level)
@@ -92,6 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         "status": _cmd_status,
         "validate": _cmd_validate,
         "provision": _cmd_provision,
+        "agent": _cmd_agent,
     }
     try:
         return dispatch[args.command](args)

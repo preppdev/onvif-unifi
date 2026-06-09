@@ -92,10 +92,24 @@ else
     log "keeping existing $CONFIG_DIR/gateway.yaml"
 fi
 
-# 6. systemd unit -------------------------------------------------------------
-log "installing systemd unit"
-sed "s#/opt/onvif-gateway#${INSTALL_DIR}#g; s#/etc/onvif-gateway#${CONFIG_DIR}#g" \
-    "$INSTALL_DIR/systemd/onvif-gateway.service" > /etc/systemd/system/onvif-gateway.service
+# 6. Tailscale (optional) -----------------------------------------------------
+# Pass TAILSCALE_AUTHKEY=tskey-... to auto-join your tailnet for remote access.
+if [ -n "${TAILSCALE_AUTHKEY:-}" ]; then
+    if ! command -v tailscale >/dev/null; then
+        log "installing Tailscale"
+        curl -fsSL https://tailscale.com/install.sh | sh
+    fi
+    log "joining tailnet"
+    tailscale up --authkey "$TAILSCALE_AUTHKEY" --hostname "$(hostname)" --ssh || \
+        warn "tailscale up failed; join manually later"
+fi
+
+# 7. systemd units ------------------------------------------------------------
+log "installing systemd units"
+for unit in onvif-gateway onvif-agent; do
+    sed "s#/opt/onvif-gateway#${INSTALL_DIR}#g; s#/etc/onvif-gateway#${CONFIG_DIR}#g" \
+        "$INSTALL_DIR/systemd/${unit}.service" > "/etc/systemd/system/${unit}.service"
+done
 systemctl daemon-reload
 
 cat <<EOF
@@ -112,6 +126,8 @@ Next steps:
        sudo systemctl enable --now onvif-gateway
   4. Watch it:
        journalctl -u onvif-gateway -f
+  5. (Optional) fleet heartbeat — set the [fleet] block in the config, then:
+       sudo systemctl enable --now onvif-agent
 
 To update later:  sudo ${INSTALL_DIR}/scripts/update.sh
 EOF

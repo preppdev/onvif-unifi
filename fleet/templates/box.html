@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="15">
+  <title>{{ name }} · Fleet</title>
+  <style>
+    body { font: 14px/1.5 -apple-system, system-ui, sans-serif; margin: 2rem; color: #1a1a1a; }
+    h1 { font-size: 1.2rem; } h2 { font-size: .95rem; margin-top: 1.5rem; }
+    table { border-collapse: collapse; width: 100%; max-width: 760px; }
+    th, td { text-align: left; padding: .4rem .7rem; border-bottom: 1px solid #e3e3e3; }
+    .dot { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; margin-right: .3rem; }
+    .on { background: #1ca64c; } .off { background: #c62828; }
+    .muted { color: #888; } a { color: #1a56db; text-decoration: none; }
+    button { font-size: .75rem; padding: .25rem .6rem; margin-right: .3rem; cursor: pointer;
+             border: 1px solid #ccc; border-radius: .3rem; background: #fafafa; }
+    button.danger { color: #c62828; border-color: #f0bcbc; }
+    code { background: #f4f4f4; padding: 0 .2rem; }
+  </style>
+</head>
+<body>
+  <p><a href="{{ url_for('dashboard') }}">← fleet</a></p>
+  <h1>{{ name }} <span class="muted">{{ box_id }}</span></h1>
+  <p>
+    version <code>{{ status.version or '?' }}</code> ·
+    gateway {{ 'active' if status.gateway_active else 'down' }} ·
+    uptime {{ (status.uptime_s or 0) // 3600 }}h ·
+    tailscale {{ status.tailscale_ip or '—' }}
+  </p>
+
+  <h2>Actions</h2>
+  {% for c in allowed %}
+  <form method="post" action="{{ url_for('queue_command', box_id=box_id) }}" style="display:inline"
+        onsubmit="return confirm('Queue {{ c }}?')">
+    <input type="hidden" name="type" value="{{ c }}">
+    <button class="{{ 'danger' if c == 'reboot' else '' }}">{{ c.replace('_',' ') }}</button>
+  </form>
+  {% endfor %}
+
+  <h2>Cameras ({{ cameras|selectattr('up')|list|length }}/{{ cameras|length }} up)</h2>
+  <table>
+    <thead><tr><th>#</th><th>Name</th><th>IP</th><th>ONVIF</th></tr></thead>
+    <tbody>
+      {% for cam in cameras %}
+      <tr><td>{{ cam.id }}</td><td>{{ cam.name }}</td><td><code>{{ cam.ip }}</code></td>
+          <td><span class="dot {{ 'on' if cam.up else 'off' }}"></span>{{ 'up' if cam.up else 'down' }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Recent commands</h2>
+  <table>
+    <thead><tr><th>#</th><th>Type</th><th>Status</th><th>OK</th><th>Output</th></tr></thead>
+    <tbody>
+      {% for c in commands %}
+      <tr><td>{{ c['id'] }}</td><td>{{ c['type'] }}</td><td>{{ c['status'] }}</td>
+          <td>{{ '✓' if c['ok'] == 1 else ('✗' if c['ok'] == 0 else '—') }}</td>
+          <td class="muted"><code>{{ (c['output'] or '')[:120] }}</code></td></tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">none</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

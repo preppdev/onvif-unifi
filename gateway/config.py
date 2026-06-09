@@ -40,11 +40,24 @@ class MediaMtxConfig:
 
 
 @dataclass
+class FleetConfig:
+    """Optional phone-home heartbeat + command-queue agent settings."""
+
+    enabled: bool = False
+    server_url: str = ""          # e.g. https://fleet.example.com
+    box_id: str = ""              # unique id for this appliance
+    api_key: str = ""             # per-box bearer token
+    enroll_key: str = ""          # sent only to register an unknown box_id
+    interval: int = 60            # heartbeat seconds
+
+
+@dataclass
 class Config:
     encoder: EncoderConfig
     network: NetworkConfig
     mediamtx: MediaMtxConfig
     cameras: list[VirtualCamera] = field(default_factory=list)
+    fleet: Optional[FleetConfig] = None
 
 
 def _profile(
@@ -167,7 +180,21 @@ def load_config(path: str) -> Config:
 
     if not cameras:
         raise ValueError("no cameras defined in config")
-    return Config(encoder=encoder, network=network, mediamtx=mediamtx, cameras=cameras)
+
+    fleet = None
+    fleet_raw = raw.get("fleet")
+    if fleet_raw:
+        fleet = FleetConfig(
+            enabled=bool(fleet_raw.get("enabled", False)),
+            server_url=str(fleet_raw.get("server_url", "")).rstrip("/"),
+            box_id=fleet_raw.get("box_id", ""),
+            api_key=fleet_raw.get("api_key", ""),
+            enroll_key=fleet_raw.get("enroll_key", ""),
+            interval=int(fleet_raw.get("interval", 60)),
+        )
+
+    return Config(encoder=encoder, network=network, mediamtx=mediamtx,
+                  cameras=cameras, fleet=fleet)
 
 
 def _require(d: dict, key: str, label: str) -> Any:
