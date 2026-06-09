@@ -1,0 +1,14 @@
+# Bootstrap for the onvif-agent — bake into the golden image at
+# /etc/onvif-gateway/fleet.yaml. This is the ONLY file that needs to exist for a
+# fresh box to phone home; the camera config is pushed from the fleet server.
+#
+# box_id and api_key are intentionally omitted:
+#   box_id  -> auto-derived from the NIC MAC (stable + unique per hardware)
+#   api_key -> auto-generated once and persisted to /var/lib/onvif-gateway/api_key
+# So one image clones to every box with no per-box editing.
+
+enabled: true
+server_url: http://fleet:8080        # fleet server's Tailscale name (or 100.x IP)
+enroll_key: CHANGE_ME_SHARED         # must equal the server's FLEET_ENROLL_KEY
+interval: 60
+# gateway_config_path: /etc/onvif-gateway/gateway.yaml   # what the server manages

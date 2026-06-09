@@ -38,6 +38,19 @@
   </form>
   {% endfor %}
 
+  <h2>Configuration
+    {% if not config_version %}<span style="color:#c62828">· unprovisioned</span>
+    {% elif config_synced %}<span style="color:#1ca64c">· in sync ({{ config_version }})</span>
+    {% else %}<span style="color:#b26a00">· pending (desired {{ config_version }}, applied {{ applied_version or 'none' }})</span>{% endif %}
+  </h2>
+  <p class="muted">Paste this box's <code>gateway.yaml</code> and save — the agent applies it
+     and starts the gateway on its next heartbeat.</p>
+  <form method="post" action="{{ url_for('set_config', box_id=box_id) }}">
+    <textarea name="config" rows="18" style="width:100%;max-width:760px;font:12px/1.4 monospace;
+              border:1px solid #ccc;border-radius:.3rem;padding:.5rem">{{ config_text }}</textarea><br>
+    <button type="submit" style="margin-top:.4rem">Save config</button>
+  </form>
+
   <h2>Cameras ({{ cameras|selectattr('up')|list|length }}/{{ cameras|length }} up)</h2>
   <table>
     <thead><tr><th>#</th><th>Name</th><th>IP</th><th>ONVIF</th></tr></thead>

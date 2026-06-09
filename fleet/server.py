@@ -11,6 +11,7 @@ Run behind TLS in production (a reverse proxy or `flask`+gunicorn over HTTPS).
 """
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import os
@@ -53,11 +54,14 @@ def init_db() -> None:
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS boxes (
-            box_id      TEXT PRIMARY KEY,
-            api_key     TEXT NOT NULL,
-            name        TEXT,
-            last_seen   INTEGER,
-            status_json TEXT
+            box_id         TEXT PRIMARY KEY,
+            api_key        TEXT NOT NULL,
+            name           TEXT,
+            last_seen      INTEGER,
+            status_json    TEXT,
+            config_text    TEXT,      -- desired gateway.yaml the box should run
+            config_version TEXT,      -- hash of config_text
+            applied_version TEXT      -- version the box reports it has applied
         );
         CREATE TABLE IF NOT EXISTS commands (
             id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,6 +75,11 @@ def init_db() -> None:
         );
         """
     )
+    # Migrate older DBs that predate the config columns.
+    have = {r[1] for r in conn.execute("PRAGMA table_info(boxes)").fetchall()}
+    for col in ("config_text", "config_version", "applied_version"):
+        if col not in have:
+            conn.execute(f"ALTER TABLE boxes ADD COLUMN {col} TEXT")
     conn.commit()
     conn.close()
 
@@ -134,8 +143,8 @@ def heartbeat():
 
     name = (body.get("hostname") or box_id)
     db().execute(
-        "UPDATE boxes SET name=COALESCE(name, ?), last_seen=?, status_json=? WHERE box_id=?",
-        (name, int(time.time()), json.dumps(body), box_id),
+        "UPDATE boxes SET name=COALESCE(name, ?), last_seen=?, status_json=?, applied_version=? WHERE box_id=?",
+        (name, int(time.time()), json.dumps(body), body.get("applied_version", ""), box_id),
     )
     # Hand over pending commands and mark them sent.
     rows = db().execute(
@@ -145,8 +154,18 @@ def heartbeat():
         db().executemany(
             "UPDATE commands SET status='sent' WHERE id=?", [(r["id"],) for r in rows]
         )
+    # Config push: hand over desired config when the box hasn't applied it yet.
+    box = db().execute(
+        "SELECT config_text, config_version FROM boxes WHERE box_id=?", (box_id,)
+    ).fetchone()
     db().commit()
-    return jsonify(commands=[{"id": r["id"], "type": r["type"]} for r in rows])
+
+    resp = {"commands": [{"id": r["id"], "type": r["type"]} for r in rows]}
+    if box and box["config_version"]:
+        resp["config_version"] = box["config_version"]
+        if box["config_version"] != body.get("applied_version", ""):
+            resp["config"] = box["config_text"]
+    return jsonify(resp)
 
 
 @app.post("/api/command-result")
@@ -190,6 +209,9 @@ def dashboard():
             "cameras_total": status.get("cameras_total"),
             "tailscale_ip": status.get("tailscale_ip"),
             "uptime_s": status.get("uptime_s"),
+            # Provisioning state: has a config been assigned, and has the box applied it?
+            "has_config": bool(r["config_version"]),
+            "config_synced": bool(r["config_version"]) and r["config_version"] == r["applied_version"],
         })
     return render_template("dashboard.html", boxes=boxes, commands=ALLOWED_COMMANDS,
                            offline_after=OFFLINE_AFTER)
@@ -222,9 +244,30 @@ def box_detail(box_id: str):
     cmds = db().execute(
         "SELECT * FROM commands WHERE box_id=? ORDER BY id DESC LIMIT 25", (box_id,)
     ).fetchall()
+    config_synced = bool(row["config_version"]) and row["config_version"] == row["applied_version"]
     return render_template("box.html", box_id=box_id, name=row["name"] or box_id,
                            status=status, cameras=status.get("cameras", []),
-                           commands=cmds, allowed=ALLOWED_COMMANDS)
+                           commands=cmds, allowed=ALLOWED_COMMANDS,
+                           config_text=row["config_text"] or "",
+                           config_version=row["config_version"],
+                           applied_version=row["applied_version"],
+                           config_synced=config_synced)
+
+
+@app.post("/boxes/<box_id>/config")
+@require_admin
+def set_config(box_id: str):
+    text = request.form.get("config", "")
+    exists = db().execute("SELECT 1 FROM boxes WHERE box_id=?", (box_id,)).fetchone()
+    if not exists:
+        return jsonify(error="unknown box"), 404
+    version = hashlib.sha256(text.encode()).hexdigest()[:12] if text.strip() else None
+    db().execute(
+        "UPDATE boxes SET config_text=?, config_version=? WHERE box_id=?",
+        (text, version, box_id),
+    )
+    db().commit()
+    return redirect(url_for("box_detail", box_id=box_id))
 
 
 def main() -> None:

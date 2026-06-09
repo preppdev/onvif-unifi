@@ -27,7 +27,7 @@
   <h1>ONVIF Gateway Fleet <span class="muted">· {{ boxes|length }} box(es)</span></h1>
   <table>
     <thead>
-      <tr><th>Status</th><th>Box</th><th>Cameras</th><th>Gateway</th><th>Version</th>
+      <tr><th>Status</th><th>Box</th><th>Provisioning</th><th>Cameras</th><th>Gateway</th><th>Version</th>
           <th>Tailscale</th><th>Last seen</th><th>Actions</th></tr>
     </thead>
     <tbody>
@@ -36,6 +36,11 @@
         <td><span class="dot {{ 'on' if b.online else 'off' }}"></span>{{ 'online' if b.online else 'offline' }}</td>
         <td><a href="{{ url_for('box_detail', box_id=b.box_id) }}">{{ b.name }}</a><br>
             <span class="muted">{{ b.box_id }}</span></td>
+        <td>
+          {% if not b.has_config %}<span class="pill bad">unprovisioned</span>
+          {% elif b.config_synced %}<span class="pill good">provisioned</span>
+          {% else %}<span class="pill">config pending</span>{% endif %}
+        </td>
         <td>
           {% if b.cameras_total is not none %}
             <span class="pill {{ 'good' if b.cameras_up == b.cameras_total else 'bad' }}">
@@ -58,7 +63,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="muted">No boxes have checked in yet.</td></tr>
+      <tr><td colspan="9" class="muted">No boxes have checked in yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>

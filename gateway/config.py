@@ -49,6 +49,7 @@ class FleetConfig:
     api_key: str = ""             # per-box bearer token
     enroll_key: str = ""          # sent only to register an unknown box_id
     interval: int = 60            # heartbeat seconds
+    gateway_config_path: str = "/etc/onvif-gateway/gateway.yaml"  # config the server manages
 
 
 @dataclass

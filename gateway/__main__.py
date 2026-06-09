@@ -70,13 +70,24 @@ def _cmd_provision(args) -> int:
 
 
 def _cmd_agent(args) -> int:
-    from .agent import FleetAgent
+    import os
 
-    cfg = load_config(args.config)
-    if not cfg.fleet or not cfg.fleet.enabled:
-        print("error: no enabled [fleet] section in config", file=sys.stderr)
+    from .agent import DEFAULT_FLEET_CONFIG, FleetAgent, load_fleet
+
+    # Prefer a dedicated bootstrap file (zero-touch image); fall back to the
+    # fleet: block inside the gateway config (already-deployed boxes).
+    bootstrap = args.fleet_config or (
+        DEFAULT_FLEET_CONFIG if os.path.exists(DEFAULT_FLEET_CONFIG) else args.config
+    )
+    try:
+        fleet = load_fleet(bootstrap)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"error: cannot load fleet bootstrap from {bootstrap}: {e}", file=sys.stderr)
         return 1
-    FleetAgent(cfg).run_forever()
+    if not fleet.enabled or not fleet.server_url:
+        print("error: fleet not enabled / server_url missing", file=sys.stderr)
+        return 1
+    FleetAgent(fleet).run_forever()
     return 0
 
 
@@ -93,7 +104,9 @@ def main(argv: list[str] | None = None) -> int:
                           help="also TCP-probe each upstream encoder RTSP port")
     sub.add_parser("validate", help="load + check config, print resolved cameras")
     sub.add_parser("provision", help="ONVIF-probe the encoder and print a cameras: block")
-    sub.add_parser("agent", help="run the fleet heartbeat agent (foreground)")
+    p_agent = sub.add_parser("agent", help="run the fleet heartbeat agent (foreground)")
+    p_agent.add_argument("--fleet-config", default=None,
+                         help="bootstrap file (default: /etc/onvif-gateway/fleet.yaml, else -c config)")
 
     args = parser.parse_args(argv)
     setup_logging(args.log_level)
