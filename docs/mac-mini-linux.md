@@ -10,11 +10,14 @@ work exactly as on any other PC — **no code or config changes**.
 
 ## Capacity by model
 
-| Model | CPU / RAM | Ethernet | Good for |
-|---|---|---|---|
-| Mac mini 2012 | dual/quad i5–i7, ≤16 GB | 1 GbE | 16–32 ch |
-| Mac mini 2014 | dual i5–i7, ≤16 GB | 1 GbE | 16–32 ch |
-| Mac mini 2018 | 4/6-core i3–i7, ≤64 GB | 1 GbE (10 GbE option) | 16–64 ch |
+| Model | Model ID | CPU / RAM | Ethernet | Good for |
+|---|---|---|---|---|
+| Mac mini 2010/2011 | A1347 | C2D / Sandy Bridge i5–i7, ≤16 GB | 1 GbE | 16–32 ch |
+| Mac mini 2012/2014 | A1347 | Ivy/Haswell i5–i7, ≤16 GB | 1 GbE | 16–32 ch |
+| Mac mini 2018 | A1993 | 4/6-core i3–i7, ≤64 GB | 1 GbE (10 GbE option) | 16–64 ch |
+
+> **A1347 = no T2 chip** — skip step 2 below. RAM on 2011/2012 is user-replaceable
+> (twist off the bottom cover); 2014 is soldered. Either way it's plenty here.
 
 All are massively over-spec'd for copy-mode relay; the only thing that matters at
 64 channels is NIC speed (the 2018's optional 10GbE is ideal there).
