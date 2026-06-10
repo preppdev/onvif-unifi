@@ -31,7 +31,7 @@ Tailscale key and enroll key live in Vercel's env, **never committed**.
    | `ONVIF_PROVISION_PASSWORD` | a strong password |
    | `ONVIF_TAILSCALE_AUTHKEY` | your reusable `tskey-auth-...` |
    | `ONVIF_FLEET_ENROLL_KEY` | the fleet server's `FLEET_ENROLL_KEY` |
-   | `ONVIF_FLEET_SERVER_URL` | `http://fleet:8080` (optional; this is the default) |
+   | `ONVIF_FLEET_SERVER_URL` | `https://www.digitaltidewater.com` (optional; this is the default) |
 
 3. **Deploy.** Test it:
    ```bash

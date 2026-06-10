@@ -55,7 +55,7 @@ For boxes you provision in-hand and configure remotely once they're on site:
    ```bash
    curl -fsSL https://raw.githubusercontent.com/preppdev/onvif-unifi/main/install.sh | sudo \
      TAILSCALE_AUTHKEY='tskey-auth-REUSABLE-...' \
-     FLEET_SERVER_URL='http://fleet:8080' \
+     FLEET_SERVER_URL='https://www.digitaltidewater.com' \
      FLEET_ENROLL_KEY='your-shared-enroll-key' \
      bash
    ```

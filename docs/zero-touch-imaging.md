@@ -31,7 +31,7 @@ On a reference Mac mini with Ubuntu installed:
    `/etc/onvif-gateway/tailscale.authkey` so each clone auto-joins on first boot.
 
 2. **Write the agent bootstrap** at `/etc/onvif-gateway/fleet.yaml`
-   (from `fleet.yaml.example`): `server_url: http://fleet:8080` (the fleet
+   (from `fleet.yaml.example`): `server_url: https://www.digitaltidewater.com` (the fleet
    server's Tailscale name) and `enroll_key` = your server's `FLEET_ENROLL_KEY`.
    Leave `box_id`/`api_key` out — they're auto-derived per box.
 
@@ -54,7 +54,7 @@ On a reference Mac mini with Ubuntu installed:
 
 ## Programming a box remotely
 
-1. Open the box in the dashboard (`http://fleet:8080`).
+1. Open the box in the dashboard (`https://www.digitaltidewater.com`).
 2. Paste its `gateway.yaml` into the **Configuration** box and Save. Set the
    site's encoder IP/creds and a free static IP range for the cameras. (Tip: SSH
    to the box over Tailscale and run `onvif-gateway provision` first to read the

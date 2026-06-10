@@ -73,3 +73,8 @@ and the box config.
   hash them if the DB host isn't trusted.
 - The command set is fixed in code on **both** sides (`ALLOWED_COMMANDS`); the
   server cannot make a box run anything outside it.
+
+> **Deprecated (2026-06-10):** the fleet control plane moved into the Digital
+> Tidewater site (tech.digitaltidewater.com, Neon/Prisma). Boxes now phone home to
+> https://www.digitaltidewater.com/api/fleet/*. This standalone Flask server is kept
+> for reference only.

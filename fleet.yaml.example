@@ -8,7 +8,7 @@
 # So one image clones to every box with no per-box editing.
 
 enabled: true
-server_url: http://fleet:8080        # fleet server's Tailscale name (or 100.x IP)
+server_url: https://www.digitaltidewater.com        # fleet server's Tailscale name (or 100.x IP)
 enroll_key: CHANGE_ME_SHARED         # must equal the server's FLEET_ENROLL_KEY
 interval: 60
 # gateway_config_path: /etc/onvif-gateway/gateway.yaml   # what the server manages
