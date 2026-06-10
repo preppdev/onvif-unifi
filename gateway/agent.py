@@ -224,14 +224,14 @@ class FleetAgent:
     def _heartbeat(self) -> dict:
         payload = {"box_id": self.box_id, "ts": int(time.time()),
                    **collect_status(self.fleet.gateway_config_path)}
-        r = self._session.post(f"{self.fleet.server_url}/api/heartbeat",
+        r = self._session.post(f"{self.fleet.server_url}/api/fleet/heartbeat",
                                json=payload, headers=self._headers(), timeout=15)
         r.raise_for_status()
         return r.json()
 
     def _report_result(self, cmd_id, ok: bool, output: str) -> None:
         try:
-            self._session.post(f"{self.fleet.server_url}/api/command-result",
+            self._session.post(f"{self.fleet.server_url}/api/fleet/command-result",
                                json={"box_id": self.box_id, "command_id": cmd_id, "ok": ok, "output": output},
                                headers=self._headers(), timeout=15)
         except requests.RequestException as e:
