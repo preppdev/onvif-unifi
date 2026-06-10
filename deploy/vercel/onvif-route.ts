@@ -1,7 +1,7 @@
 // Vercel route that serves the password-gated appliance enrollment script.
 //
 // Next.js App Router: place at  app/onvif/route.ts  in the digitaltidewater.com
-// project -> serves https://digitaltidewater.com/onvif
+// project -> serves https://www.digitaltidewater.com/onvif
 // (For a non-Next.js project, see deploy/README.md for the api/ + rewrite variant.)
 //
 // Set these in Vercel → Project → Settings → Environment Variables (secrets stay

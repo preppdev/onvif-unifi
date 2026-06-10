@@ -2,12 +2,12 @@
 # ONVIF gateway appliance enrollment — host this on digitaltidewater.com.
 #
 # Fill in the two secrets below, then upload to an UNGUESSABLE path, e.g.
-#   https://digitaltidewater.com/onvif/enroll-7f3a9c2e.sh
+#   https://www.digitaltidewater.com/onvif/enroll-7f3a9c2e.sh
 # (the file carries a reusable Tailscale key + the fleet enroll key, so don't
 #  put it at a guessable URL; rotate the keys if it ever leaks).
 #
 # Provision a box (after installing Ubuntu) with one line:
-#   curl -fsSL https://digitaltidewater.com/onvif/enroll-7f3a9c2e.sh | sudo bash
+#   curl -fsSL https://www.digitaltidewater.com/onvif/enroll-7f3a9c2e.sh | sudo bash
 set -euo pipefail
 
 curl -fsSL https://raw.githubusercontent.com/preppdev/onvif-unifi/main/install.sh | \

@@ -3,12 +3,15 @@
 Provision an appliance in two steps — install Ubuntu, then:
 
 ```bash
-curl -fsSL https://provision:PASSWORD@digitaltidewater.com/onvif | sudo bash
+curl -fsSL https://provision:PASSWORD@www.digitaltidewater.com/onvif | sudo bash
 ```
 
 A clean URL gated by HTTP basic auth. A small Vercel function checks the password
 and returns the enrollment script, building it from environment variables — so the
 Tailscale key and enroll key live in Vercel's env, **never committed**.
+
+> Use the **`www`** host. The apex `digitaltidewater.com` 307-redirects to `www`,
+> and `curl` does not resend basic-auth credentials across a host change.
 
 ## Setup (one time)
 
@@ -32,13 +35,13 @@ Tailscale key and enroll key live in Vercel's env, **never committed**.
 
 3. **Deploy.** Test it:
    ```bash
-   curl -fsSL https://provision:PASSWORD@digitaltidewater.com/onvif    # prints the script
+   curl -fsSL https://provision:PASSWORD@www.digitaltidewater.com/onvif    # prints the script
    ```
 
 ## Provision a box
 
 ```bash
-curl -fsSL https://provision:PASSWORD@digitaltidewater.com/onvif | sudo bash
+curl -fsSL https://provision:PASSWORD@www.digitaltidewater.com/onvif | sudo bash
 ```
 
 ## Security notes
