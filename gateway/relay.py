@@ -11,10 +11,12 @@ from __future__ import annotations
 import logging
 import socket
 import threading
+import time
 
 log = logging.getLogger("relay")
 
 BASE_PORT = 21000
+RELAY_TTL = 3600  # auto-disable relays after this many seconds (safety net)
 
 
 def _pipe(src: socket.socket, dst: socket.socket) -> None:
@@ -85,6 +87,7 @@ class RelayManager:
         self._fwd: dict[str, _Forwarder] = {}
         self._urls: dict[str, str] = {}
         self._enabled = False
+        self._enabled_at = 0.0
 
     def enable(self, bind_ip: str, targets: list[dict]) -> int:
         """targets: [{ip, port, scheme}]. Returns the number of relays started."""
@@ -103,7 +106,9 @@ class RelayManager:
             self._urls[t["ip"]] = f'{t.get("scheme", "http")}://{bind_ip}:{port}'
             port += 1
         self._enabled = True
-        log.info("relays enabled: %d host(s) on %s", len(self._fwd), bind_ip)
+        self._enabled_at = time.time()
+        log.info("relays enabled: %d host(s) on %s (auto-off in %ds)",
+                 len(self._fwd), bind_ip, RELAY_TTL)
         return len(self._fwd)
 
     def disable(self) -> None:
@@ -112,6 +117,19 @@ class RelayManager:
         self._fwd.clear()
         self._urls.clear()
         self._enabled = False
+        self._enabled_at = 0.0
+
+    def seconds_remaining(self) -> int:
+        if not self._enabled:
+            return 0
+        return max(0, int(RELAY_TTL - (time.time() - self._enabled_at)))
+
+    def expire_if_due(self) -> bool:
+        """Auto-disable relays once their TTL is up. Returns True if it expired."""
+        if self._enabled and time.time() - self._enabled_at >= RELAY_TTL:
+            self.disable()
+            return True
+        return False
 
     def urls(self) -> dict[str, str]:
         return dict(self._urls)

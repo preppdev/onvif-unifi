@@ -219,6 +219,12 @@ def _relay_urls() -> dict:
     return RELAYS.urls()
 
 
+def _relays_remaining() -> int:
+    """Seconds until relays auto-disable (0 when off)."""
+    from .relay import RELAYS
+    return RELAYS.seconds_remaining()
+
+
 def _camera_health(gateway_config_path: str) -> tuple[bool, list[dict]]:
     """(provisioned, cameras). Reads each camera's actual VNIC IP (ground truth for
     both static and DHCP) so leased addresses surface in the dashboard."""
@@ -260,6 +266,7 @@ def collect_status(gateway_config_path: str) -> dict:
         "discovered": _discovery(),
         "relays_enabled": _relays_enabled(),
         "relays": _relay_urls(),
+        "relays_ttl_remaining": _relays_remaining(),
     }
 
 
@@ -394,6 +401,9 @@ class FleetAgent:
         log.info("fleet agent started: box=%s -> %s every %ss",
                  self.box_id, self.fleet.server_url, self.fleet.interval)
         while not self._stop.is_set():
+            from .relay import RELAYS
+            if RELAYS.expire_if_due():
+                log.info("relays auto-disabled (TTL reached)")
             try:
                 self._handle_response(self._heartbeat())
             except requests.RequestException as e:
