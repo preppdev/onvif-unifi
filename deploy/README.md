@@ -1,4 +1,4 @@
-# Hosted enrollment (digitaltidewater.com)
+# Hosted enrollment (digitaltidewater.com on Vercel)
 
 Provision an appliance in two steps — install Ubuntu, then:
 
@@ -6,59 +6,51 @@ Provision an appliance in two steps — install Ubuntu, then:
 curl -fsSL https://provision:PASSWORD@digitaltidewater.com/onvif | sudo bash
 ```
 
-A clean URL, gated by HTTP basic auth. The file behind it bakes in the Tailscale
-key + fleet server URL + enroll key and chains to the installer.
+A clean URL gated by HTTP basic auth. A small Vercel function checks the password
+and returns the enrollment script, building it from environment variables — so the
+Tailscale key and enroll key live in Vercel's env, **never committed**.
 
-## 1. The file
+## Setup (one time)
 
-Take `enroll.sh.template`, fill in the reusable Tailscale auth key and the fleet
-server's `FLEET_ENROLL_KEY`, and host its contents at the path `/onvif`.
+1. **Add the route** to the digitaltidewater.com project:
+   - Next.js App Router: copy `vercel/onvif-route.ts` to `app/onvif/route.ts`.
+   - Non-Next.js project: put it at `api/onvif.ts` (it serves `/api/onvif`) and add
+     a rewrite in `vercel.json` so `/onvif` maps to it:
+     ```json
+     { "rewrites": [{ "source": "/onvif", "destination": "/api/onvif" }] }
+     ```
 
-## 2. Password-gate the path
+2. **Set environment variables** (Vercel → Project → Settings → Environment Variables):
 
-**Apache (shared hosting / cPanel — most common):**
+   | Variable | Value |
+   |---|---|
+   | `ONVIF_PROVISION_USER` | `provision` (or any username) |
+   | `ONVIF_PROVISION_PASSWORD` | a strong password |
+   | `ONVIF_TAILSCALE_AUTHKEY` | your reusable `tskey-auth-...` |
+   | `ONVIF_FLEET_ENROLL_KEY` | the fleet server's `FLEET_ENROLL_KEY` |
+   | `ONVIF_FLEET_SERVER_URL` | `http://fleet:8080` (optional; this is the default) |
 
-```bash
-# once, somewhere outside the web root:
-htpasswd -c /home/USER/.htpasswd-onvif provision      # prompts for the password
-```
+3. **Deploy.** Test it:
+   ```bash
+   curl -fsSL https://provision:PASSWORD@digitaltidewater.com/onvif    # prints the script
+   ```
 
-`.htaccess` in the directory serving `/onvif`:
-
-```apache
-<Files "onvif">
-  AuthType Basic
-  AuthName "ONVIF Provisioning"
-  AuthUserFile /home/USER/.htpasswd-onvif
-  Require valid-user
-</Files>
-```
-
-**nginx:**
-
-```nginx
-location = /onvif {
-    auth_basic "ONVIF Provisioning";
-    auth_basic_user_file /etc/nginx/.htpasswd-onvif;   # htpasswd-created
-    default_type text/plain;
-    alias /var/www/onvif/enroll.sh;
-}
-```
-
-## 3. Provision
+## Provision a box
 
 ```bash
 curl -fsSL https://provision:PASSWORD@digitaltidewater.com/onvif | sudo bash
 ```
 
-(`provision` is the basic-auth username; use whatever you set with `htpasswd`.)
-
 ## Security notes
 
-- **Always HTTPS** — the file and the basic-auth credentials cross the wire.
-- The file still contains a reusable Tailscale key + the enroll key; the password
-  is what protects them. Pick a strong one.
-- If a credential leaks: change the basic-auth password, and rotate the Tailscale
-  key (admin console) + `FLEET_ENROLL_KEY` (fleet `.env`) and re-host.
-- Recommended regardless: **tag** the Tailscale key (`tag:onvif`) with an ACL so
-  even a leaked key can only enroll locked-down nodes.
+- Vercel is HTTPS by default — credentials and the script are encrypted in transit.
+- Secrets live in Vercel env vars, not in the repo or a static file. The basic-auth
+  password gates access; pick a strong one.
+- On leak: change `ONVIF_PROVISION_PASSWORD`, and rotate the Tailscale key (admin
+  console) + `FLEET_ENROLL_KEY` (fleet `.env`) and redeploy.
+- Recommended: **tag** the Tailscale key (`tag:onvif`) + an ACL, so even a leaked
+  key can only enroll locked-down nodes.
+
+> `enroll.sh.template` is the equivalent script if you ever host it statically
+> instead. The fleet server's `GET /enroll/<token>` endpoint is a tailnet/LAN
+> alternative that needs no public web host.
