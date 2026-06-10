@@ -99,6 +99,28 @@ def test_example_config_loads(tmp_path):
     assert len({c.ip for c in cfg.cameras}) == 16  # unique IPs
 
 
+def test_dhcp_mode_allows_cameras_without_ip(tmp_path):
+    p = tmp_path / "c.yaml"
+    p.write_text(
+        "encoder: {host: 1.2.3.4}\n"
+        "defaults: {ip_mode: dhcp}\n"
+        "cameras:\n  - {id: 1, name: A}\n  - {id: 2, name: B}\n"
+    )
+    cfg = load_config(str(p))
+    assert all(c.ip_mode == "dhcp" and c.ip == "" for c in cfg.cameras)
+    # effective_ip is the runtime lease once set; empty until then.
+    cfg.cameras[0].assigned_ip = "10.9.9.9"
+    assert cfg.cameras[0].effective_ip == "10.9.9.9"
+    assert cfg.cameras[0].rtsp_url(cfg.cameras[0].main) == "rtsp://10.9.9.9:8554/ch1_main"
+
+
+def test_static_mode_still_requires_ip(tmp_path):
+    p = tmp_path / "c.yaml"
+    p.write_text("encoder: {host: 1.2.3.4}\ncameras:\n  - {id: 1, name: A}\n")
+    with pytest.raises(ValueError, match="ip"):
+        load_config(str(p))
+
+
 def test_duplicate_ip_rejected(tmp_path):
     p = tmp_path / "c.yaml"
     p.write_text(

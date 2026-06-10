@@ -121,18 +121,25 @@ def load_config(path: str) -> Config:
     sub_spec = defaults.get("sub") or {}
     codec = defaults.get("codec", "H264")
 
+    default_ip_mode = defaults.get("ip_mode", "static")
+
     cameras: list[VirtualCamera] = []
     seen_ips: set[str] = set()
     seen_ids: set[int] = set()
     for entry in raw.get("cameras") or []:
         cid = int(_require(entry, "id", "cameras[].id"))
-        ip = _require(entry, "ip", f"cameras[id={cid}].ip")
+        ip_mode = entry.get("ip_mode", default_ip_mode)
+        if ip_mode == "static":
+            ip = _require(entry, "ip", f"cameras[id={cid}].ip")
+        else:  # dhcp — IP is leased per-VNIC at runtime
+            ip = entry.get("ip", "")
         if cid in seen_ids:
             raise ValueError(f"duplicate camera id: {cid}")
-        if ip in seen_ips:
+        if ip and ip in seen_ips:
             raise ValueError(f"duplicate camera ip: {ip}")
         seen_ids.add(cid)
-        seen_ips.add(ip)
+        if ip:
+            seen_ips.add(ip)
 
         name = entry.get("name", f"Channel {cid}")
         # Per-camera spec can override defaults.
@@ -166,6 +173,7 @@ def load_config(path: str) -> Config:
                 id=cid,
                 name=name,
                 ip=ip,
+                ip_mode=ip_mode,
                 netmask=entry.get("netmask", network.netmask),
                 gateway=entry.get("gateway", network.gateway),
                 parent_interface=entry.get("parent_interface", network.parent_interface),

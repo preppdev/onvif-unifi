@@ -134,18 +134,24 @@ def _service_active(name: str) -> bool:
 
 
 def _camera_health(gateway_config_path: str) -> tuple[bool, list[dict]]:
-    """(provisioned, cameras). Unprovisioned boxes have no valid config yet."""
+    """(provisioned, cameras). Reads each camera's actual VNIC IP (ground truth for
+    both static and DHCP) so leased addresses surface in the dashboard."""
+    from .vnic import current_ip
+
     try:
         cfg = load_config(gateway_config_path)
     except Exception:  # noqa: BLE001 - missing/invalid config == not provisioned
         return False, []
     cams = []
     for cam in cfg.cameras:
-        try:
-            up = requests.get(f"http://{cam.ip}:{cam.onvif_port}/healthz", timeout=2).ok
-        except requests.RequestException:
-            up = False
-        cams.append({"id": cam.id, "name": cam.name, "ip": cam.ip, "up": up})
+        ip = current_ip(cam.vnic_name) or cam.ip
+        up = False
+        if ip:
+            try:
+                up = requests.get(f"http://{ip}:{cam.onvif_port}/healthz", timeout=2).ok
+            except requests.RequestException:
+                up = False
+        cams.append({"id": cam.id, "name": cam.name, "ip": ip, "ip_mode": cam.ip_mode, "up": up})
     return True, cams
 
 

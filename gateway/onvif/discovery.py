@@ -88,15 +88,15 @@ class DiscoveryResponder:
                 pass
             sock.bind(("", WSD_PORT))
             # Join the multicast group on this camera's virtual IP only.
-            mreq = struct.pack("4s4s", socket.inet_aton(WSD_GROUP), socket.inet_aton(cam.ip))
+            mreq = struct.pack("4s4s", socket.inet_aton(WSD_GROUP), socket.inet_aton(cam.effective_ip))
             sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
             sock.settimeout(1.0)
             self._sock = sock
         except OSError as e:
-            log.error("cam%s: cannot start WS-Discovery on %s: %s", cam.id, cam.ip, e)
+            log.error("cam%s: cannot start WS-Discovery on %s: %s", cam.id, cam.effective_ip, e)
             return
 
-        log.info("cam%s: WS-Discovery listening on %s", cam.id, cam.ip)
+        log.info("cam%s: WS-Discovery listening on %s", cam.id, cam.effective_ip)
         while not self._stop.is_set():
             try:
                 data, addr = sock.recvfrom(65535)
@@ -111,7 +111,7 @@ class DiscoveryResponder:
             try:
                 # Source the reply from the virtual IP, ephemeral port.
                 out = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                out.bind((cam.ip, 0))
+                out.bind((cam.effective_ip, 0))
                 out.sendto(reply.encode("utf-8"), addr)
                 out.close()
                 log.debug("cam%s: ProbeMatch -> %s", cam.id, addr)

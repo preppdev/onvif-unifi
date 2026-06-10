@@ -38,6 +38,9 @@ defaults:
   onvif_username: admin         # credentials UniFi will use to adopt the cameras
   onvif_password: admin
   onvif_port: 80                # per-IP, so 80 is fine (run as root or grant cap)
+  # ip_mode: static             # 'static' (set ip: per camera) or 'dhcp' (each
+                                # camera leases an address at a new site; then
+                                # "Pin to static" from the dashboard to freeze it).
   codec: H264                   # advertised codec; copy-through by default
   main: { width: 1920, height: 1080, framerate: 30, bitrate: 4096 }
   sub:  { width: 640,  height: 480,  framerate: 15, bitrate: 1024 }

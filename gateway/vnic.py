@@ -10,6 +10,7 @@ address — this is what makes 16 cameras on one NIC stable.
 from __future__ import annotations
 
 import logging
+import os
 import platform
 import shutil
 import socket
@@ -17,7 +18,7 @@ import struct
 import subprocess
 import threading
 import time
-from typing import Iterable
+from typing import Iterable, Optional
 
 from .models import VirtualCamera
 
@@ -85,17 +86,54 @@ def setup_camera(cam: VirtualCamera) -> None:
     _run(["ip", "link", "add", vnic, "link", parent, "type", "macvlan", "mode", "bridge"])
     _run(["ip", "link", "set", vnic, "address", cam.mac])
     _apply_arp_isolation(parent, vnic)
-
-    prefix = _prefix_len(cam.netmask)
-    # No default gateway on the VNIC — that would hijack the host's outbound route.
-    _run(["ip", "addr", "add", f"{cam.ip}/{prefix}", "dev", vnic], check=False)
     _run(["ip", "link", "set", vnic, "up"])
-    log.info("vnic %s up: %s/%s mac=%s on %s", vnic, cam.ip, prefix, cam.mac, parent)
+
+    if cam.ip_mode == "dhcp":
+        cam.assigned_ip = _dhcp_lease(vnic) or ""
+        log.info("vnic %s up: dhcp=%s mac=%s on %s",
+                 vnic, cam.assigned_ip or "(no lease)", cam.mac, parent)
+    else:
+        prefix = _prefix_len(cam.netmask)
+        # No default gateway on the VNIC — that would hijack the host's outbound route.
+        _run(["ip", "addr", "add", f"{cam.ip}/{prefix}", "dev", vnic], check=False)
+        cam.assigned_ip = cam.ip
+        log.info("vnic %s up: %s/%s mac=%s on %s", vnic, cam.ip, prefix, cam.mac, parent)
+
+
+def _dhcp_lease(vnic: str, timeout: int = 15) -> Optional[str]:
+    """Lease an address on the VNIC via dhclient and return it. A per-interface
+    config keeps dhclient from clobbering the host's DNS/default route."""
+    conf = f"/run/onvif-gateway/dhclient-{vnic}.conf"
+    os.makedirs("/run/onvif-gateway", exist_ok=True)
+    # request only an address — no routers/dns supersede of the host.
+    with open(conf, "w") as fh:
+        fh.write('request subnet-mask, broadcast-address;\n')
+    _run(["dhclient", "-r", "-cf", conf, vnic], check=False, quiet=True)  # release stale
+    _run(["dhclient", "-1", "-nw", "-cf", conf, vnic], check=False)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        ip = current_ip(vnic)
+        if ip:
+            return ip
+        time.sleep(1)
+    return None
+
+
+def current_ip(vnic: str) -> Optional[str]:
+    """Read the IPv4 address currently on a VNIC (ground truth for dhcp + static)."""
+    proc = _run(["ip", "-4", "-o", "addr", "show", vnic], check=False, quiet=True)
+    for tok in proc.stdout.split():
+        if "/" in tok and tok.count(".") == 3:
+            return tok.split("/")[0]
+    return None
 
 
 def teardown_camera(cam: VirtualCamera) -> None:
     if not IS_LINUX:
         return
+    if cam.ip_mode == "dhcp":
+        conf = f"/run/onvif-gateway/dhclient-{cam.vnic_name}.conf"
+        _run(["dhclient", "-r", "-cf", conf, cam.vnic_name], check=False, quiet=True)
     if _link_exists(cam.vnic_name):
         _run(["ip", "link", "delete", cam.vnic_name], check=False)
         log.info("vnic %s removed", cam.vnic_name)

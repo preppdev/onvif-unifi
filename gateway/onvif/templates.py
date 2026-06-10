@@ -63,8 +63,8 @@ def device_information(cam: VirtualCamera) -> str:
 
 def capabilities(cam: VirtualCamera) -> str:
     base = cam.device_service_url
-    media = f"http://{cam.ip}:{cam.onvif_port}/onvif/media_service"
-    events = f"http://{cam.ip}:{cam.onvif_port}/onvif/events_service"
+    media = f"http://{cam.effective_ip}:{cam.onvif_port}/onvif/media_service"
+    events = f"http://{cam.effective_ip}:{cam.onvif_port}/onvif/events_service"
     return envelope(
         "<tds:GetCapabilitiesResponse><tds:Capabilities>"
         f'<tt:Device><tt:XAddr>{base}</tt:XAddr>'
@@ -84,8 +84,8 @@ def capabilities(cam: VirtualCamera) -> str:
 
 def services(cam: VirtualCamera) -> str:
     base = cam.device_service_url
-    media = f"http://{cam.ip}:{cam.onvif_port}/onvif/media_service"
-    events = f"http://{cam.ip}:{cam.onvif_port}/onvif/events_service"
+    media = f"http://{cam.effective_ip}:{cam.onvif_port}/onvif/media_service"
+    events = f"http://{cam.effective_ip}:{cam.onvif_port}/onvif/events_service"
     return envelope(
         "<tds:GetServicesResponse>"
         f"<tds:Service><tds:Namespace>{NS['tds']}</tds:Namespace><tds:XAddr>{base}</tds:XAddr>"
@@ -119,7 +119,7 @@ def network_interfaces(cam: VirtualCamera) -> str:
         f'<tds:NetworkInterfaces token="eth0"><tt:Enabled>true</tt:Enabled>'
         f"<tt:Info><tt:Name>eth0</tt:Name><tt:HwAddress>{cam.mac}</tt:HwAddress><tt:MTU>1500</tt:MTU></tt:Info>"
         "<tt:IPv4><tt:Enabled>true</tt:Enabled><tt:Config>"
-        f"<tt:Manual><tt:Address>{cam.ip}</tt:Address><tt:PrefixLength>{prefix}</tt:PrefixLength></tt:Manual>"
+        f"<tt:Manual><tt:Address>{cam.effective_ip}</tt:Address><tt:PrefixLength>{prefix}</tt:PrefixLength></tt:Manual>"
         "<tt:DHCP>false</tt:DHCP></tt:Config></tt:IPv4>"
         "</tds:NetworkInterfaces></tds:GetNetworkInterfacesResponse>"
     )

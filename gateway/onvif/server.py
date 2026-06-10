@@ -27,7 +27,7 @@ class CameraRuntime:
     def start(self) -> None:
         app = build_app(self.cam)
         # Bind to the camera's own IP so the SOAP service answers only there.
-        self._httpd = make_server(self.cam.ip, self.cam.onvif_port, app, threaded=True)
+        self._httpd = make_server(self.cam.effective_ip, self.cam.onvif_port, app, threaded=True)
         self._http_thread = threading.Thread(
             target=self._httpd.serve_forever, name=f"onvif-http-{self.cam.id}", daemon=True
         )

@@ -1,0 +1,37 @@
+encoder:
+  host: 10.2.100.100
+  username: admin
+  password: Secureity1!
+network:
+  parent_interface: enp3s0f0
+  netmask: 255.255.0.0
+  gateway: 10.2.0.1
+mediamtx:
+  binary: mediamtx
+  config_path: /etc/onvif-gateway/mediamtx.yml
+  rtsp_port: 8554
+  api_port: 9997
+defaults:
+  onvif_username: admin
+  onvif_password: Secureity1!
+  onvif_port: 80
+  codec: H264
+  main: { width: 2560, height: 1440, framerate: 15, bitrate: 6144 }
+  sub:  { width: 928,  height: 576,  framerate: 25, bitrate: 1024 }
+cameras:
+- { id: 1,  name: Camera 1,  ip: 10.2.100.101, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/0/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/0/onvif/profile3/media.smp" }
+- { id: 2,  name: Camera 2,  ip: 10.2.100.102, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/1/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/1/onvif/profile3/media.smp" }
+- { id: 3,  name: Camera 3,  ip: 10.2.100.103, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/2/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/2/onvif/profile3/media.smp" }
+- { id: 4,  name: Camera 4,  ip: 10.2.100.104, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/3/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/3/onvif/profile3/media.smp" }
+- { id: 5,  name: Camera 5,  ip: 10.2.100.105, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/4/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/4/onvif/profile3/media.smp" }
+- { id: 6,  name: Camera 6,  ip: 10.2.100.106, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/5/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/5/onvif/profile3/media.smp" }
+- { id: 7,  name: Camera 7,  ip: 10.2.100.107, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/6/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/6/onvif/profile3/media.smp" }
+- { id: 8,  name: Camera 8,  ip: 10.2.100.108, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/7/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/7/onvif/profile3/media.smp" }
+- { id: 9,  name: Camera 9,  ip: 10.2.100.109, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/8/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/8/onvif/profile3/media.smp" }
+- { id: 10, name: Camera 10, ip: 10.2.100.110, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/9/onvif/profile2/media.smp",  sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/9/onvif/profile3/media.smp" }
+- { id: 11, name: Camera 11, ip: 10.2.100.111, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/10/onvif/profile2/media.smp", sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/10/onvif/profile3/media.smp" }
+- { id: 12, name: Camera 12, ip: 10.2.100.112, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/11/onvif/profile2/media.smp", sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/11/onvif/profile3/media.smp" }
+- { id: 13, name: Camera 13, ip: 10.2.100.113, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/12/onvif/profile2/media.smp", sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/12/onvif/profile3/media.smp" }
+- { id: 14, name: Camera 14, ip: 10.2.100.114, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/13/onvif/profile2/media.smp", sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/13/onvif/profile3/media.smp" }
+- { id: 15, name: Camera 15, ip: 10.2.100.115, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/14/onvif/profile2/media.smp", sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/14/onvif/profile3/media.smp" }
+- { id: 16, name: Camera 16, ip: 10.2.100.116, main_url: "rtsp://admin:Secureity1!@10.2.100.100:554/15/onvif/profile2/media.smp", sub_url: "rtsp://admin:Secureity1!@10.2.100.100:554/15/onvif/profile3/media.smp" }

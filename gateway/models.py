@@ -46,7 +46,9 @@ class VirtualCamera:
 
     id: int                    # 1-based channel index
     name: str                  # display name in UniFi
-    ip: str                    # virtual IP assigned to this camera's VNIC
+    ip: str = ""               # static IP (required when ip_mode=static; blank for dhcp)
+    ip_mode: str = "static"    # "static" | "dhcp" (dhcp = lease per-VNIC at runtime)
+    assigned_ip: str = ""      # runtime: the actual IP on the VNIC (dhcp lease or static)
     netmask: str = "255.255.255.0"
     gateway: Optional[str] = None
     parent_interface: str = "eth0"
@@ -80,12 +82,18 @@ class VirtualCamera:
         return self.mac.replace(":", "").upper()
 
     @property
+    def effective_ip(self) -> str:
+        """The IP actually on the VNIC: the runtime-assigned address (DHCP lease,
+        or static once added) if known, else the configured static IP."""
+        return self.assigned_ip or self.ip
+
+    @property
     def device_service_url(self) -> str:
-        return f"http://{self.ip}:{self.onvif_port}/onvif/device_service"
+        return f"http://{self.effective_ip}:{self.onvif_port}/onvif/device_service"
 
     def rtsp_url(self, profile: StreamProfile) -> str:
         """RTSP URL we hand to UniFi — points at the *virtual* IP, not the encoder."""
-        return f"rtsp://{self.ip}:{self.rtsp_port}/{profile.path}"
+        return f"rtsp://{self.effective_ip}:{self.rtsp_port}/{profile.path}"
 
     def profiles(self) -> list[StreamProfile]:
         return [p for p in (self.main, self.sub) if p is not None]

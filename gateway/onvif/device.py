@@ -77,7 +77,7 @@ def build_app(cam: VirtualCamera) -> Flask:
             prof = profiles_by_token.get(token) or cam.main
             return _resp(templates.stream_uri(cam.rtsp_url(prof)))
         if action == "GetSnapshotUri":
-            uri = f"http://{cam.ip}:{cam.onvif_port}/onvif/snapshot"
+            uri = f"http://{cam.effective_ip}:{cam.onvif_port}/onvif/snapshot"
             return _resp(templates.snapshot_uri(uri))
 
         # --- Media configuration surface (queried during adoption) ----------
@@ -102,7 +102,7 @@ def build_app(cam: VirtualCamera) -> Flask:
             return _resp(templates.event_properties())
         if action == "CreatePullPointSubscription":
             sub_id = _uuid.uuid4().hex[:12]
-            sub_url = f"http://{cam.ip}:{cam.onvif_port}/onvif/subscription/{sub_id}"
+            sub_url = f"http://{cam.effective_ip}:{cam.onvif_port}/onvif/subscription/{sub_id}"
             return _resp(templates.create_pullpoint(sub_url, _iso(), _iso(60)))
         if action == "PullMessages":
             return _resp(templates.pull_messages_empty(_iso(), _iso(60)))
@@ -138,6 +138,6 @@ def build_app(cam: VirtualCamera) -> Flask:
 
     @app.route("/healthz", methods=["GET"])
     def healthz():
-        return {"camera": cam.id, "name": cam.name, "ip": cam.ip}
+        return {"camera": cam.id, "name": cam.name, "ip": cam.effective_ip}
 
     return app
