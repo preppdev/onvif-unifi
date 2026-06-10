@@ -35,11 +35,18 @@ from .config import FleetConfig, load_config
 
 log = logging.getLogger("agent")
 
-ALLOWED_COMMANDS = {"reboot", "update", "restart_gateway", "stop_gateway", "start_gateway"}
+ALLOWED_COMMANDS = {
+    "reboot", "update", "restart_gateway", "stop_gateway", "start_gateway",
+    "tunnel_on", "tunnel_off",  # toggle the box as a Tailscale subnet router into its LAN
+}
 GATEWAY_SERVICE = "onvif-gateway"
 STATE_DIR = "/var/lib/onvif-gateway"
 DEFAULT_FLEET_CONFIG = "/etc/onvif-gateway/fleet.yaml"
 DEFAULT_GATEWAY_CONFIG = "/etc/onvif-gateway/gateway.yaml"
+
+# Network discovery + WAN IP are heavier; refresh at most this often.
+_DISCOVERY_TTL = 300
+_cache: dict = {"discovery": None, "discovery_ts": 0, "wan_ip": None, "wan_ts": 0}
 
 
 # --------------------------------------------------------------------------- #
@@ -133,6 +140,73 @@ def _service_active(name: str) -> bool:
         return False
 
 
+def _default_iface() -> Optional[str]:
+    try:
+        out = subprocess.run(["ip", "route", "show", "default"], capture_output=True, text=True, timeout=5)
+        parts = out.stdout.split()
+        return parts[parts.index("dev") + 1] if "dev" in parts else None
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+
+
+def _lan_ip() -> Optional[str]:
+    from .vnic import current_ip
+
+    iface = _default_iface()
+    return current_ip(iface) if iface else None
+
+
+def _lan_cidr() -> Optional[str]:
+    """The box's LAN subnet in CIDR (for advertising as a Tailscale route)."""
+    iface = _default_iface()
+    if not iface:
+        return None
+    try:
+        out = subprocess.run(["ip", "-4", "-o", "route", "show", "dev", iface, "scope", "link"],
+                             capture_output=True, text=True, timeout=5)
+        for tok in out.stdout.split():
+            if "/" in tok and tok.count(".") == 3:
+                return tok
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return None
+
+
+def _wan_ip() -> Optional[str]:
+    now = time.time()
+    if _cache["wan_ip"] and now - _cache["wan_ts"] < _DISCOVERY_TTL:
+        return _cache["wan_ip"]
+    for url in ("https://api.ipify.org", "https://ifconfig.co/ip", "https://icanhazip.com"):
+        try:
+            ip = requests.get(url, timeout=5).text.strip()
+            if ip and ip.count(".") == 3:
+                _cache["wan_ip"], _cache["wan_ts"] = ip, now
+                return ip
+        except requests.RequestException:
+            continue
+    return _cache["wan_ip"]
+
+
+def _discovery() -> dict:
+    now = time.time()
+    if _cache["discovery"] is not None and now - _cache["discovery_ts"] < _DISCOVERY_TTL:
+        return _cache["discovery"]
+    try:
+        from .discover import discover_all
+        _cache["discovery"] = discover_all()
+    except Exception as e:  # noqa: BLE001
+        log.debug("discovery failed: %s", e)
+        _cache["discovery"] = _cache["discovery"] or {}
+    _cache["discovery_ts"] = now
+    return _cache["discovery"]
+
+
+def _tunnel_routes() -> str:
+    """Currently-advertised Tailscale subnet routes (empty = tunnel off)."""
+    p = Path(STATE_DIR) / "tunnel_routes"
+    return p.read_text().strip() if p.exists() else ""
+
+
 def _camera_health(gateway_config_path: str) -> tuple[bool, list[dict]]:
     """(provisioned, cameras). Reads each camera's actual VNIC IP (ground truth for
     both static and DHCP) so leased addresses surface in the dashboard."""
@@ -162,12 +236,16 @@ def collect_status(gateway_config_path: str) -> dict:
         "hostname": platform.node(),
         "uptime_s": _uptime_s(),
         "tailscale_ip": _tailscale_ip(),
+        "lan_ip": _lan_ip(),
+        "wan_ip": _wan_ip(),
+        "tunnel_routes": _tunnel_routes(),
         "provisioned": provisioned,
         "gateway_active": _service_active(GATEWAY_SERVICE),
         "applied_version": _applied_version(),
         "cameras_total": len(cams),
         "cameras_up": sum(1 for c in cams if c["up"]),
         "cameras": cams,
+        "discovered": _discovery(),
     }
 
 
@@ -188,9 +266,34 @@ def apply_config(text: str, version: str, gateway_config_path: str) -> None:
     _set_applied_version(version)
 
 
+def _set_tunnel(on: bool) -> tuple[bool, str]:
+    """Toggle the box as a Tailscale subnet router into its own LAN."""
+    if on:
+        cidr = _lan_cidr()
+        if not cidr:
+            return False, "could not determine LAN subnet"
+        subprocess.run(["sysctl", "-w", "net.ipv4.ip_forward=1"], capture_output=True, timeout=10)
+        r = subprocess.run(["tailscale", "set", f"--advertise-routes={cidr}"],
+                           capture_output=True, text=True, timeout=30)
+        if r.returncode == 0:
+            os.makedirs(STATE_DIR, exist_ok=True)
+            (Path(STATE_DIR) / "tunnel_routes").write_text(cidr)
+            return True, f"advertising {cidr} (approve the route in the Tailscale admin once)"
+        return False, (r.stdout + r.stderr)[-500:]
+    else:
+        r = subprocess.run(["tailscale", "set", "--advertise-routes="],
+                           capture_output=True, text=True, timeout=30)
+        (Path(STATE_DIR) / "tunnel_routes").write_text("")
+        return r.returncode == 0, (r.stdout + r.stderr)[-500:] or "tunnel off"
+
+
 def _run_command(cmd_type: str) -> tuple[bool, str]:
     if cmd_type not in ALLOWED_COMMANDS:
         return False, f"refused: {cmd_type} not in allowlist"
+    if cmd_type == "tunnel_on":
+        return _set_tunnel(True)
+    if cmd_type == "tunnel_off":
+        return _set_tunnel(False)
     actions = {
         "restart_gateway": ["systemctl", "restart", GATEWAY_SERVICE],
         "stop_gateway": ["systemctl", "stop", GATEWAY_SERVICE],
