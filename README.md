@@ -44,6 +44,28 @@ RTSP URLs, and `sudo systemctl enable --now onvif-gateway`. Update later with
 Running on an **Intel Mac mini**? See [docs/mac-mini-linux.md](docs/mac-mini-linux.md)
 — bare-metal Ubuntu runs the gateway unchanged.
 
+### Provision a field appliance (2 steps)
+
+For boxes you provision in-hand and configure remotely once they're on site:
+
+1. Install Ubuntu Server.
+2. Run the build line — installs everything, joins Tailscale, writes the fleet
+   bootstrap, and starts the agent so the box registers immediately:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/preppdev/onvif-unifi/main/install.sh | sudo \
+     TAILSCALE_AUTHKEY='tskey-auth-REUSABLE-...' \
+     FLEET_SERVER_URL='http://fleet:8080' \
+     FLEET_ENROLL_KEY='your-shared-enroll-key' \
+     bash
+   ```
+
+The box ships with **no site config** and the gateway disabled. It appears in the
+fleet dashboard as **unprovisioned**; when it's powered on in the field it rejoins
+Tailscale and phones home, and you push its camera config from the dashboard — the
+gateway starts automatically. (Setting `FLEET_SERVER_URL` + `FLEET_ENROLL_KEY`
+is what enables this "appliance mode"; omit them for a manually-configured box.)
+
 ## Requirements (Linux target)
 
 - Python ≥ 3.9

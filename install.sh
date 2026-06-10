@@ -81,12 +81,27 @@ python3 -m venv "$INSTALL_DIR/.venv"
 "$INSTALL_DIR/.venv/bin/pip" install --quiet --upgrade pip
 "$INSTALL_DIR/.venv/bin/pip" install --quiet -e "$INSTALL_DIR"
 
-# 5. Config -------------------------------------------------------------------
+# 5. Config / provisioning mode ----------------------------------------------
+# APPLIANCE MODE (set FLEET_SERVER_URL + FLEET_ENROLL_KEY): provision in-hand for
+# remote programming. Writes the fleet bootstrap, ships with NO site config — the
+# camera config is pushed later from the fleet dashboard once the box is in the
+# field. Otherwise: manual mode (drop an editable gateway.yaml).
 mkdir -p "$CONFIG_DIR"
-if [ ! -f "$CONFIG_DIR/gateway.yaml" ]; then
+APPLIANCE=0
+if [ -n "${FLEET_SERVER_URL:-}" ] && [ -n "${FLEET_ENROLL_KEY:-}" ]; then
+    APPLIANCE=1
+    log "appliance mode: writing fleet bootstrap (camera config comes from server)"
+    cat > "$CONFIG_DIR/fleet.yaml" <<FLEET
+enabled: true
+server_url: ${FLEET_SERVER_URL}
+enroll_key: ${FLEET_ENROLL_KEY}
+interval: ${FLEET_INTERVAL:-60}
+FLEET
+    chmod 600 "$CONFIG_DIR/fleet.yaml"
+    rm -f "$CONFIG_DIR/gateway.yaml"          # site config is server-managed
+elif [ ! -f "$CONFIG_DIR/gateway.yaml" ]; then
     cp "$INSTALL_DIR/config.example.yaml" "$CONFIG_DIR/gateway.yaml"
     chmod 600 "$CONFIG_DIR/gateway.yaml"
-    NEW_CONFIG=1
     log "created $CONFIG_DIR/gateway.yaml (from example) — EDIT THIS"
 else
     log "keeping existing $CONFIG_DIR/gateway.yaml"
@@ -103,8 +118,10 @@ if [ -n "${TAILSCALE_AUTHKEY:-}" ]; then
     mkdir -p "$CONFIG_DIR"
     printf '%s' "$TAILSCALE_AUTHKEY" > "$CONFIG_DIR/tailscale.authkey"
     chmod 600 "$CONFIG_DIR/tailscale.authkey"
-    log "joining tailnet"
-    tailscale up --authkey "$TAILSCALE_AUTHKEY" --hostname "$(hostname)" || \
+    # Name the node onvif-<MAC> to match the agent's box_id (stable + unique).
+    ts_mac="$(cat /sys/class/net/"$(ip route show default | awk '{print $5; exit}')"/address 2>/dev/null | tr -d ':')"
+    log "joining tailnet as onvif-${ts_mac:-$(hostname)}"
+    tailscale up --authkey "$TAILSCALE_AUTHKEY" --hostname "onvif-${ts_mac:-$(hostname)}" || \
         warn "tailscale up failed; join manually later"
 fi
 
@@ -116,7 +133,24 @@ for unit in onvif-gateway onvif-agent onvif-firstboot; do
 done
 systemctl daemon-reload
 
-cat <<EOF
+if [ "$APPLIANCE" = "1" ]; then
+    # Agent on (registers + phones home now); gateway off until config is pushed.
+    systemctl enable --now onvif-agent >/dev/null 2>&1 || true
+    systemctl enable onvif-firstboot >/dev/null 2>&1 || true
+    systemctl disable onvif-gateway >/dev/null 2>&1 || true
+    cat <<EOF
+
+$(printf '\033[1;32m✓ Appliance provisioned and registered\033[0m')
+
+This box is ready to ship. It has joined Tailscale and the fleet agent is running;
+it should appear in your dashboard as UNPROVISIONED within ~1 minute:
+  ${FLEET_SERVER_URL}
+
+In the field: power it on (wired network); it rejoins Tailscale and phones home.
+Then push its camera config from the dashboard — the gateway starts automatically.
+EOF
+else
+    cat <<EOF
 
 $(printf '\033[1;32m✓ ONVIF Gateway installed\033[0m')
 
@@ -135,3 +169,4 @@ Next steps:
 
 To update later:  sudo ${INSTALL_DIR}/scripts/update.sh
 EOF
+fi
