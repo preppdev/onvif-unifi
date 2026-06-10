@@ -21,6 +21,10 @@ services:
       FLEET_ADMIN_PASSWORD: ${FLEET_ADMIN_PASSWORD:?set FLEET_ADMIN_PASSWORD in .env}
       FLEET_ENROLL_KEY: ${FLEET_ENROLL_KEY:?set FLEET_ENROLL_KEY in .env}
       FLEET_OFFLINE_AFTER: ${FLEET_OFFLINE_AFTER:-180}
+      # One-line provisioning (GET /enroll/<token>). Optional but recommended.
+      FLEET_PROVISION_TOKEN: ${FLEET_PROVISION_TOKEN:-}
+      FLEET_TAILSCALE_AUTHKEY: ${FLEET_TAILSCALE_AUTHKEY:-}
+      FLEET_PUBLIC_URL: ${FLEET_PUBLIC_URL:-http://fleet:8080}
     volumes:
       - fleet-data:/data
 

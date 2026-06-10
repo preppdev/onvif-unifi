@@ -95,6 +95,25 @@ def test_load_fleet_gateway_block_style(tmp_path):
     assert fc.server_url == "http://h:8080" and fc.enabled
 
 
+def test_enroll_endpoint(client, monkeypatch):
+    monkeypatch.setattr(server, "PROVISION_TOKEN", "secret-tok")
+    monkeypatch.setattr(server, "PROVISION_TSKEY", "tskey-auth-xyz")
+    monkeypatch.setattr(server, "ENROLL_KEY", "enroll123")
+    # wrong/missing token -> 404 (don't reveal the endpoint)
+    assert client.get("/enroll/nope").status_code == 404
+    # correct token -> a bootstrap script with the baked params
+    r = client.get("/enroll/secret-tok")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "tskey-auth-xyz" in body and "FLEET_ENROLL_KEY='enroll123'" in body
+    assert "install.sh" in body and body.startswith("#!/usr/bin/env bash")
+
+
+def test_enroll_disabled_without_token(client, monkeypatch):
+    monkeypatch.setattr(server, "PROVISION_TOKEN", "")
+    assert client.get("/enroll/anything").status_code == 404
+
+
 def test_derive_box_id_is_stable_and_formatted():
     from gateway.agent import derive_box_id
 
