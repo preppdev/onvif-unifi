@@ -37,7 +37,8 @@ log = logging.getLogger("agent")
 
 ALLOWED_COMMANDS = {
     "reboot", "update", "restart_gateway", "stop_gateway", "start_gateway",
-    "tunnel_on", "tunnel_off",  # toggle the box as a Tailscale subnet router into its LAN
+    "tunnel_on", "tunnel_off",   # toggle the box as a Tailscale subnet router into its LAN
+    "relays_on", "relays_off",   # toggle per-host TCP relays for click-to-open device UIs
 }
 GATEWAY_SERVICE = "onvif-gateway"
 STATE_DIR = "/var/lib/onvif-gateway"
@@ -207,6 +208,17 @@ def _tunnel_routes() -> str:
     return p.read_text().strip() if p.exists() else ""
 
 
+def _relays_enabled() -> bool:
+    from .relay import RELAYS
+    return RELAYS.enabled
+
+
+def _relay_urls() -> dict:
+    """Map of discovered host IP -> click-to-open relay URL (when relays are on)."""
+    from .relay import RELAYS
+    return RELAYS.urls()
+
+
 def _camera_health(gateway_config_path: str) -> tuple[bool, list[dict]]:
     """(provisioned, cameras). Reads each camera's actual VNIC IP (ground truth for
     both static and DHCP) so leased addresses surface in the dashboard."""
@@ -246,6 +258,8 @@ def collect_status(gateway_config_path: str) -> dict:
         "cameras_up": sum(1 for c in cams if c["up"]),
         "cameras": cams,
         "discovered": _discovery(),
+        "relays_enabled": _relays_enabled(),
+        "relays": _relay_urls(),
     }
 
 
@@ -294,6 +308,18 @@ def _run_command(cmd_type: str) -> tuple[bool, str]:
         return _set_tunnel(True)
     if cmd_type == "tunnel_off":
         return _set_tunnel(False)
+    if cmd_type == "relays_on":
+        from .discover import web_targets
+        from .relay import RELAYS
+        ts = _tailscale_ip()
+        if not ts:
+            return False, "no tailscale IP (is the box on the tailnet?)"
+        n = RELAYS.enable(ts, web_targets(_discovery()))
+        return True, f"relays enabled for {n} web host(s)"
+    if cmd_type == "relays_off":
+        from .relay import RELAYS
+        RELAYS.disable()
+        return True, "relays disabled"
     actions = {
         "restart_gateway": ["systemctl", "restart", GATEWAY_SERVICE],
         "stop_gateway": ["systemctl", "stop", GATEWAY_SERVICE],

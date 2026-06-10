@@ -132,9 +132,36 @@ def neighbor_vendors() -> list[dict]:
     return list(seen.values())
 
 
+def web_port(ip: str, timeout: float = 1.0) -> tuple[int, str] | None:
+    """Probe a host for a web UI: prefer HTTPS (443) then HTTP (80)."""
+    for port, scheme in ((443, "https"), (80, "http")):
+        try:
+            with socket.create_connection((ip, port), timeout=timeout):
+                return port, scheme
+        except OSError:
+            continue
+    return None
+
+
 def discover_all() -> dict:
     return {
         "onvif": onvif_probe(),
         "unifi": unifi_probe(),
         "tagged": neighbor_vendors(),
     }
+
+
+def web_targets(discovered: dict) -> list[dict]:
+    """Unique discovered IPs that serve a web UI -> [{ip, port, scheme}]."""
+    ips: list[str] = []
+    for key in ("onvif", "unifi", "tagged"):
+        for d in discovered.get(key, []):
+            ip = d.get("ip")
+            if ip and ip not in ips:
+                ips.append(ip)
+    targets = []
+    for ip in ips:
+        wp = web_port(ip)
+        if wp:
+            targets.append({"ip": ip, "port": wp[0], "scheme": wp[1]})
+    return targets
