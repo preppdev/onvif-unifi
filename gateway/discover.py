@@ -114,8 +114,9 @@ def _parse_ubnt_tlv(data: bytes) -> dict:
 
 
 def neighbor_vendors() -> list[dict]:
-    """Devices already in the kernel neighbor table, tagged by MAC vendor."""
-    out = []
+    """Devices already in the kernel neighbor table, tagged by MAC vendor.
+    Deduped by IP (the same device can appear via several macvlan VNICs)."""
+    seen: dict[str, dict] = {}
     try:
         proc = subprocess.run(["ip", "-4", "neigh", "show"], capture_output=True, text=True, timeout=5)
         for line in proc.stdout.splitlines():
@@ -124,11 +125,11 @@ def neighbor_vendors() -> list[dict]:
                 continue
             ip, mac = m.group(1), m.group(2)
             vendor = _vendor(mac)
-            if vendor:  # only surface recognized vendors to keep it relevant
-                out.append({"ip": ip, "mac": mac, "vendor": vendor})
+            if vendor and ip not in seen:  # only recognized vendors, one row per IP
+                seen[ip] = {"ip": ip, "mac": mac, "vendor": vendor}
     except (OSError, subprocess.SubprocessError):
         pass
-    return out
+    return list(seen.values())
 
 
 def discover_all() -> dict:
